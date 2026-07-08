@@ -1,0 +1,1756 @@
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard – Esteira de Improdutivas</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --navy: #0b1628;
+    --navy2: #0e1f3d;
+    --card: #ffffff;
+    --accent: #1a73e8;
+    --accent2: #0d9488;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --purple: #8b5cf6;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --tag-exec: #dbeafe;
+    --tag-exec-t: #1d4ed8;
+    --tag-em: #fef9c3;
+    --tag-em-t: #854d0e;
+    --tag-pago: #dcfce7;
+    --tag-pago-t: #166534;
+    --tag-pend: #fee2e2;
+    --tag-pend-t: #991b1b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--navy); font-family: 'Segoe UI', sans-serif; color: var(--text); min-height: 100vh; }
+
+  /* STICKY TOP */
+  .sticky-top { position: sticky; top: 0; z-index: 100; }
+
+  /* HEADER */
+  .header { background: var(--navy2); border-bottom: 2px solid #1e3a5f; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo-badge { background: var(--accent); color: #fff; font-weight: 700; font-size: 12px; padding: 4px 11px; border-radius: 6px; letter-spacing: 1px; }
+  .header-title { color: #fff; font-size: 16px; font-weight: 700; }
+  .header-sub { color: #94a3b8; font-size: 11px; margin-top: 1px; }
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all .18s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1558b0; }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #16a34a; }
+  .btn-outline { background: transparent; color: #cbd5e1; border: 1.5px solid #334155; }
+  .btn-outline:hover { background: #1e3a5f; color: #fff; }
+
+  /* FILTERS */
+  .filters-bar { background: var(--navy2); padding: 8px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid #1e3a5f; }
+  .filter-group { display: flex; align-items: center; gap: 6px; }
+  .filter-label { color: #94a3b8; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  select { background: #0b1628; color: #e2e8f0; border: 1.5px solid #334155; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; min-width: 120px; }
+  select:focus { outline: none; border-color: var(--accent); }
+  .btn-reset { background: #334155; color: #94a3b8; border: none; border-radius: 6px; padding: 5px 12px; font-size: 11px; cursor: pointer; font-weight: 600; }
+  .btn-reset:hover { background: #475569; color: #fff; }
+  .filter-count { color: #94a3b8; font-size: 11px; margin-left: auto; }
+
+  /* MAIN */
+  .main { padding: 24px 32px; display: flex; flex-direction: column; gap: 24px; }
+
+  /* PAINEL GERENCIAL */
+  .section-title { color: #e2e8f0; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: #1e3a5f; }
+
+  .panels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .panel-card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .panel-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .panel-badge { background: var(--navy); color: #94a3b8; font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+  /* painel gerencial em tabela */
+  .kpi-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .kpi-table thead th { background: #0e1f3d; color: #ffffff; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; padding: 9px 14px; text-align: left; border-bottom: 2px solid #1e3a5f; }
+  .kpi-table thead th:last-child { text-align: center; }
+  .kpi-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background .12s; }
+  .kpi-table tbody tr:hover { background: #f8fafc; }
+  .kpi-table tbody tr:last-child { border-bottom: none; font-weight: 700; background: #f1f5f9; }
+  .kpi-table td { padding: 11px 14px; vertical-align: middle; }
+  .kpi-table td:last-child { text-align: center; }
+  .kpi-num { font-size: 22px; font-weight: 800; min-width: 40px; display: inline-block; text-align: center; }
+  .kpi-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+  .kpi-row-label { display: flex; align-items: center; font-weight: 600; }
+  .kpi-desc-cell { font-size: 13px; color: var(--muted); }
+
+  /* CHARTS GRID */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .chart-card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+  .chart-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .chart-sub { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 260px; }
+  .chart-wrap.pizza { height: 340px; }
+
+  /* TABLE */
+  .table-card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+  .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .table-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .table-actions { display: flex; gap: 8px; align-items: center; }
+  .search-box { background: #f8fafc; border: 1.5px solid var(--border); border-radius: 6px; padding: 7px 12px; font-size: 13px; min-width: 200px; color: var(--text); }
+  .search-box:focus { outline: none; border-color: var(--accent); }
+  .btn-excel { background: #16a34a; color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .btn-excel:hover { background: #15803d; }
+
+  /* Tabela única com scroll em ambas as direções */
+  .table-wrap { overflow: auto; max-height: 480px; border-radius: 8px; border: 1px solid var(--border); position: relative; }
+  .table-wrap table { border-collapse: separate; border-spacing: 0; font-size: 12px; table-layout: fixed; width: 2200px; }
+
+  /* Cabeçalho congelado verticalmente */
+  .table-wrap thead th {
+    background: #0e1f3d; color: #ffffff; font-weight: 700; font-size: 9px;
+    text-transform: uppercase; letter-spacing: .4px; padding: 10px 12px;
+    text-align: left; border-bottom: 2px solid #1e3a5f; white-space: nowrap;
+    position: sticky; top: 0; z-index: 4; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Colunas fixas: Grp, Superintendência, Regional (cols 0,1,2) */
+  .table-wrap thead th.col-fix,
+  .table-wrap tbody td.col-fix {
+    position: sticky; z-index: 3; background: inherit;
+  }
+  .table-wrap thead th.col-fix { z-index: 6; background: #0e1f3d; }
+
+  /* Larguras e offsets das 3 colunas fixas */
+  .col-fix-0 { left: 0;     min-width: 44px;  max-width: 44px;  }
+  .col-fix-1 { left: 44px;  min-width: 120px; max-width: 120px; }
+  .col-fix-2 { left: 164px; min-width: 110px; max-width: 110px; box-shadow: 3px 0 6px rgba(0,0,0,.10); }
+
+  /* Zebra */
+  .table-wrap tbody tr:nth-child(odd)  td { background: #f8fafc; }
+  .table-wrap tbody tr:nth-child(even) td { background: #ffffff; }
+  .table-wrap tbody tr:hover td { background: #e8f0fe !important; }
+
+  .table-wrap tbody td {
+    padding: 9px 12px; color: var(--text); vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .tag-exec { background: var(--tag-exec); color: var(--tag-exec-t); }
+  .tag-em   { background: var(--tag-em);   color: var(--tag-em-t);   }
+  .tag-pago { background: var(--tag-pago); color: var(--tag-pago-t); }
+  .tag-pend { background: var(--tag-pend); color: var(--tag-pend-t); }
+  .grupo-badge { font-size: 11px; font-weight: 700; width: 22px; height: 22px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; }
+  .badge-a { background: #ede9fe; color: #5b21b6; }
+  .badge-b { background: #fff7ed; color: #c2410c; }
+  .table-footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
+  .no-results { text-align: center; color: var(--muted); padding: 32px; font-size: 14px; }
+
+  @media (max-width: 900px) {
+    .panels-grid, .charts-grid { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+    .filters-bar { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sticky-top">
+<div class="header">
+  <div class="header-left">
+    <div class="logo-badge">EQUATORIAL</div>
+    <div>
+      <div class="header-title">Esteira de Improdutivas</div>
+      <div class="header-sub">Controle Gerencial · Grupos A e B · <span id="syncStatus">🔄 Sincronizando com a planilha...</span></div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-primary" onclick="loadFromGoogleSheets(true)">
+      🔄 Atualizar Agora
+    </button>
+    <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()" title="Carregar um arquivo .xlsx local (uso offline/backup)">
+      ⬆ Carregar Arquivo Local
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(event)">
+    <button class="btn btn-success" onclick="saveHTML()">
+      💾 Salvar Backup HTML
+    </button>
+  </div>
+</div>
+
+<div class="filters-bar">
+  <div class="filter-group">
+    <span class="filter-label">GRUPO</span>
+    <select id="fGrupo" onchange="applyFilters()">
+      <option value="">Todos</option>
+      <option value="A">Grupo A</option>
+      <option value="B">Grupo B</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">SUPERINTENDÊNCIA</span>
+    <select id="fSup" onchange="applyFilters()">
+      <option value="">Todas</option>
+    <option value="CENTRO">CENTRO</option><option value="NORDESTE">NORDESTE</option><option value="NORTE">NORTE</option><option value="SUDOESTE">SUDOESTE</option><option value="SUL">SUL</option></select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">REGIONAL</span>
+    <select id="fReg" onchange="applyFilters()">
+      <option value="">Todas</option>
+    <option value="ANÁPOLIS">ANÁPOLIS</option><option value="FORMOSA">FORMOSA</option><option value="GOIÂNIA">GOIÂNIA</option><option value="IPORÁ">IPORÁ</option><option value="LUZIÂNIA">LUZIÂNIA</option><option value="METROPOLITANA">METROPOLITANA</option><option value="MONTES BELOS">MONTES BELOS</option><option value="MORRINHOS">MORRINHOS</option></select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">FORNECIMENTO</span>
+    <select id="fForn" onchange="applyFilters()">
+      <option value="">Todos</option>
+    <option value="Normal">Normal</option><option value="Suspenso">Suspenso</option></select>
+  </div>
+  <button class="btn-reset" onclick="resetFilters()">✕ Limpar</button>
+  <span class="filter-count" id="filterCount">45 de 45 registros</span>
+</div>
+</div><!-- /sticky-top -->
+
+<div class="main">
+
+  <!-- PAINÉIS GERENCIAIS -->
+  <div>
+    <div class="section-title">Painel Gerencial</div>
+    <div class="panels-grid">
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">Grupo A</div>
+          <div class="panel-badge" id="badgeA">16 casos</div>
+        </div>
+      <div id="kpiA">
+    <table class="kpi-table">
+      <thead><tr>
+        <th>Indicador</th>
+        <th>Descrição</th>
+        <th>Qtd</th>
+      </tr></thead>
+      <tbody>
+        
+        <tr style="font-weight:700;background:#f8fafc">
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#8b5cf6"></span>Total de Casos</span></td>
+          <td class="kpi-desc-cell">Volume total de improdutivas acompanhadas</td>
+          <td><span class="kpi-num" style="color:#8b5cf6">16</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#f59e0b"></span>Em Tratativa</span></td>
+          <td class="kpi-desc-cell">Casos com ação em andamento</td>
+          <td><span class="kpi-num" style="color:#f59e0b">4</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#3b82f6"></span>Executado</span></td>
+          <td class="kpi-desc-cell">Cortes executados</td>
+          <td><span class="kpi-num" style="color:#3b82f6">6</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#ef4444"></span>Pendente &gt; 3 dias</span></td>
+          <td class="kpi-desc-cell">Casos críticos para atuação</td>
+          <td><span class="kpi-num" style="color:#ef4444">0</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#94a3b8"></span>Encerrado</span></td>
+          <td class="kpi-desc-cell">Caso encerrado</td>
+          <td><span class="kpi-num" style="color:#94a3b8">0</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#22c55e"></span>Pago</span></td>
+          <td class="kpi-desc-cell">Cliente pagou o débito</td>
+          <td><span class="kpi-num" style="color:#22c55e">6</span></td>
+        </tr>
+      </tbody>
+    </table></div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">Grupo B</div>
+          <div class="panel-badge" id="badgeB">29 casos</div>
+        </div>
+        <div id="kpiB">
+    <table class="kpi-table">
+      <thead><tr>
+        <th>Indicador</th>
+        <th>Descrição</th>
+        <th>Qtd</th>
+      </tr></thead>
+      <tbody>
+        
+        <tr style="font-weight:700;background:#f8fafc">
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#8b5cf6"></span>Total de Casos</span></td>
+          <td class="kpi-desc-cell">Volume total de improdutivas acompanhadas</td>
+          <td><span class="kpi-num" style="color:#8b5cf6">29</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#f59e0b"></span>Em Tratativa</span></td>
+          <td class="kpi-desc-cell">Casos com ação em andamento</td>
+          <td><span class="kpi-num" style="color:#f59e0b">8</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#3b82f6"></span>Executado</span></td>
+          <td class="kpi-desc-cell">Cortes executados</td>
+          <td><span class="kpi-num" style="color:#3b82f6">16</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#ef4444"></span>Pendente &gt; 3 dias</span></td>
+          <td class="kpi-desc-cell">Casos críticos para atuação</td>
+          <td><span class="kpi-num" style="color:#ef4444">0</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#94a3b8"></span>Encerrado</span></td>
+          <td class="kpi-desc-cell">Caso encerrado</td>
+          <td><span class="kpi-num" style="color:#94a3b8">0</span></td>
+        </tr>
+        <tr>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:#22c55e"></span>Pago</span></td>
+          <td class="kpi-desc-cell">Cliente pagou o débito</td>
+          <td><span class="kpi-num" style="color:#22c55e">5</span></td>
+        </tr>
+      </tbody>
+    </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div>
+    <div class="section-title">Análise Visual</div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Tratativas das Improdutivas</div>
+        <div class="chart-sub">Distribuição por status de tratativa</div>
+        <div class="chart-wrap pizza"><canvas id="chartPizza" style="box-sizing: border-box; display: block; height: 340px; width: 706px;" width="706" height="340"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribuição das Improdutivas</div>
+        <div class="chart-sub">Contagem por tipo de fechamento</div>
+        <div class="chart-wrap"><canvas id="chartBarras" style="box-sizing: border-box; display: block; height: 260px; width: 706px;" width="706" height="260"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABELA ANALÍTICA -->
+  <div>
+    <div class="section-title">Tabela Analítica</div>
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Base Completa — Grupos A e B</div>
+        <div class="table-actions">
+          <input type="text" class="search-box" id="tableSearch" placeholder="🔍 Buscar cliente, SS, UC..." oninput="renderTable()">
+          <button class="btn-excel" onclick="exportExcel()">
+            📊 Exportar Excel
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="mainTable">
+          <colgroup>
+            <col style="width:44px">   <!-- Grp -->
+            <col style="width:120px">  <!-- Superintendência -->
+            <col style="width:110px">  <!-- Regional -->
+            <col style="width:100px">  <!-- SS -->
+            <col style="width:120px">  <!-- UC -->
+            <col style="width:90px">   <!-- 1º Geração -->
+            <col style="width:90px">   <!-- 1º Execução -->
+            <col style="width:100px">  <!-- SS última Ger. -->
+            <col style="width:90px">   <!-- Última Geração -->
+            <col style="width:90px">   <!-- Última Atuação -->
+            <col style="width:160px">  <!-- Nome do Cliente -->
+            <col style="width:90px">   <!-- Valor -->
+            <col style="width:80px">   <!-- Fornecimento -->
+            <col style="width:160px">  <!-- Fechamento -->
+            <col style="width:80px">   <!-- Status -->
+            <col style="width:170px">  <!-- Resumo -->
+            <col style="width:110px">  <!-- Última Tratativa -->
+            <col style="width:110px">  <!-- Próxima Ação -->
+            <col style="width:80px">   <!-- Prazo -->
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="col-fix col-fix-0">Grp</th>
+              <th class="col-fix col-fix-1">Superintendência</th>
+              <th class="col-fix col-fix-2">Regional</th>
+              <th>SS</th>
+              <th>UC</th>
+              <th>1º Geração</th>
+              <th>1º Execução</th>
+              <th>SS última Ger.</th>
+              <th>Última Geração</th>
+              <th>Última Atuação</th>
+              <th>Nome do Cliente</th>
+              <th>Valor (R$)</th>
+              <th>Fornecimento</th>
+              <th>Fechamento</th>
+              <th>Status</th>
+              <th>Resumo</th>
+              <th>Última Tratativa</th>
+              <th>Próxima Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">NORDESTE</td>
+      <td class="col-fix col-fix-2">FORMOSA</td>
+      <td style="font-family:monospace;font-size:11px">195786505</td>
+      <td style="font-family:monospace;font-size:11px">240949701271</td>
+      <td style="font-size:11px">17/05/2026</td>
+      <td style="font-size:11px">17/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196616239</td>
+      <td style="font-size:11px">14/06/2026</td>
+      <td style="font-size:11px">15/06/2026</td>
+      <td style="font-weight:600">TALLISON CRISTHIAN MUHL</td>
+      <td style="white-space:nowrap">R$&nbsp;3.723,34</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="UC continua cortada / Protestado.">UC continua cortada / Protestado.</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">NORDESTE</td>
+      <td class="col-fix col-fix-2">LUZIÂNIA</td>
+      <td style="font-family:monospace;font-size:11px">196691286</td>
+      <td style="font-family:monospace;font-size:11px">202062001269</td>
+      <td style="font-size:11px">17/06/2026</td>
+      <td style="font-size:11px">18/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196804774</td>
+      <td style="font-size:11px">21/06/2026</td>
+      <td style="font-size:11px">25/06/2026</td>
+      <td style="font-weight:600">SOLAR EMPRESARIAL</td>
+      <td style="white-space:nowrap">R$&nbsp;26.020,70</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Retirado fusivel / Consultor tentando renegociação / Protestado">Retirado fusivel / Consultor tentando renegociação / …</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196241664</td>
+      <td style="font-family:monospace;font-size:11px">440024101270</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">08/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">-</td>
+      <td style="font-size:11px">-</td>
+      <td style="font-size:11px">-</td>
+      <td style="font-weight:600">SPE LUGASA PEAK RESIDENCIAL  CAPRI LTDA</td>
+      <td style="white-space:nowrap">R$&nbsp;16.265,07</td>
+      <td>Normal</td>
+      <td style="font-size:11px">CLIENTE NÃO PERMITIU CORTE</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Debito é referente a um TOI, consultora responsavel esta em contato com o cliente para realizar negociação referente ao debito">Debito é referente a um TOI, consultora responsavel e…</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196804762</td>
+      <td style="font-family:monospace;font-size:11px">400491401287</td>
+      <td style="font-size:11px">21/06/2023</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">-</td>
+      <td style="font-size:11px">-</td>
+      <td style="font-size:11px">-</td>
+      <td style="font-weight:600">CONSORCIO BC ENERGIA GO 01</td>
+      <td style="white-space:nowrap">R$&nbsp;16.434,96</td>
+      <td>Normal</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="PAGO">PAGO</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196804778</td>
+      <td style="font-family:monospace;font-size:11px">400491201209</td>
+      <td style="font-size:11px">21/06/2023</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">-</td>
+      <td style="font-size:11px">-</td>
+      <td style="font-size:11px">-</td>
+      <td style="font-weight:600">CONSORCIO BC ENERGIA GO 01</td>
+      <td style="white-space:nowrap">R$&nbsp;16.830,55</td>
+      <td>Normal</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="PAGO">PAGO</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">METROPOLITANA</td>
+      <td style="font-family:monospace;font-size:11px">196407290</td>
+      <td style="font-family:monospace;font-size:11px">419686701259</td>
+      <td style="font-size:11px">09/06/2026</td>
+      <td style="font-size:11px">07/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196852661</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">BLOCOS TROPICAL</td>
+      <td style="white-space:nowrap">R$&nbsp;36.993,24</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">FATURA PAGA</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Pago">Pago</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">METROPOLITANA</td>
+      <td style="font-family:monospace;font-size:11px">196615133</td>
+      <td style="font-family:monospace;font-size:11px">405861201204</td>
+      <td style="font-size:11px">14/06/2026</td>
+      <td style="font-size:11px">17/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">CERÂMICA MGL EIRELI</td>
+      <td style="white-space:nowrap">R$&nbsp;14.140,22</td>
+      <td>Normal</td>
+      <td style="font-size:11px">CLIENTE NÃO PERMITIU CORTE</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Pago">Pago</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">METROPOLITANA</td>
+      <td style="font-family:monospace;font-size:11px">196615093</td>
+      <td style="font-family:monospace;font-size:11px">393378101207</td>
+      <td style="font-size:11px">14/06/2026</td>
+      <td style="font-size:11px">15/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">197212621</td>
+      <td style="font-size:11px">30/06/2026</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">EMANOEL JOSE DE CAMARGO</td>
+      <td style="white-space:nowrap">R$&nbsp;7.000,65</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">CADEADO NA CAIXA</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Retirada de ramal direcionada para STC 197212621, cliente efetuou o pagamento parcial da divida.">Retirada de ramal direcionada para STC 197212621, cli…</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">GOIÂNIA</td>
+      <td style="font-family:monospace;font-size:11px">196691318</td>
+      <td style="font-family:monospace;font-size:11px">3990701202</td>
+      <td style="font-size:11px">17/06/2026</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">SCAROLA PIZZARIA</td>
+      <td style="white-space:nowrap">R$&nbsp;4.940,07</td>
+      <td>Normal</td>
+      <td style="font-size:11px">SEM ACESSO/ MEDIDOR INTERNO</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Pago">Pago</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">GOIÂNIA</td>
+      <td style="font-family:monospace;font-size:11px">196691292</td>
+      <td style="font-family:monospace;font-size:11px">18717301220</td>
+      <td style="font-size:11px">17/06/2026</td>
+      <td style="font-size:11px">18/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196804745</td>
+      <td style="font-size:11px">21/06/2026</td>
+      <td style="font-size:11px">24/06/2026</td>
+      <td style="font-weight:600">OSVALDO DENIS</td>
+      <td style="white-space:nowrap">R$&nbsp;3.428,50</td>
+      <td>Normal</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Abrir suspensão">Abrir suspensão</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">196241605</td>
+      <td style="font-family:monospace;font-size:11px">153975501254</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">02/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196657998</td>
+      <td style="font-size:11px">07/06/2026 / 15/06/2026</td>
+      <td style="font-size:11px">09/06/2026 / 18/06/2026</td>
+      <td style="font-weight:600">CONDOMINIO DO EDIFICIO GOLDEN DOLPHIN RESORT</td>
+      <td style="white-space:nowrap">R$&nbsp;314.116,06</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">CLIENTE NÃO PERMITIU CORTE</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Gerada dia 07 e cortado 09/06, pela SS 196407329 / gerado dia 15/06, fechado dia 18/06 com a liminar e policia // GERADO nova VISTORIA dia 22/06 - 196860776, retirada do porta fusível e medidor">Gerada dia 07 e cortado 09/06, pela SS 196407329 / ge…</td>
+      <td style="font-size:11px">Apoio Security</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">195717729</td>
+      <td style="font-family:monospace;font-size:11px">307767101213</td>
+      <td style="font-size:11px">15/05/2026</td>
+      <td style="font-size:11px">18/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">195839839 /  195957991 / 196006382 / 196019653 / 196224722</td>
+      <td style="font-size:11px">19-22-24-25-31/05</td>
+      <td style="font-size:11px">19-22-26-28/05 - 01/06 - 11/06</td>
+      <td style="font-weight:600">NUTRATTA</td>
+      <td style="white-space:nowrap">R$&nbsp;217.092,09</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">UC CONTINUA CORTADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Enviado para campo SS de vistoria 195717729, dia 18/05, executado SS 	195839839 (19)/	195957991 (22)/ 196006382 (24) / SS 196224722 gerada dia 31/05, fechada dia 01/06 retirado porta fusível / 196510847 - 11/06">Enviado para campo SS de vistoria 195717729, dia 18/0…</td>
+      <td style="font-size:11px">Vistoria Grupo A</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">196650983</td>
+      <td style="font-family:monospace;font-size:11px">244025801236</td>
+      <td style="font-size:11px">15/06/2026</td>
+      <td style="font-size:11px">09/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196657311</td>
+      <td style="font-size:11px">15/06/2026</td>
+      <td style="font-size:11px">16/06/2026</td>
+      <td style="font-weight:600">HPO ADMINISTRACAO DE CLUBES E HOTEIS LTDA</td>
+      <td style="white-space:nowrap">R$&nbsp;52.552,22</td>
+      <td>Normal</td>
+      <td style="font-size:11px">CLIENTE NÃO PERMITIU CORTE</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Cliente realizou o pagamento das faturas 04/2026 e 05/2026. Por esse motivo, o cliente saiu da regua de cobrança.  Tem uma fatura vencida em 25/06, foi solicitado o envio do reaviso especial.">Cliente realizou o pagamento das faturas 04/2026 e 05…</td>
+      <td style="font-size:11px">Vistoria Grupo A</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">196241607</td>
+      <td style="font-family:monospace;font-size:11px">99010701297</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">13/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">195717764 / 195958006 / 196224989 / 196616237</td>
+      <td style="font-size:11px">15-22-31/05 - 14/06/2026</td>
+      <td style="font-size:11px">20-25/05 - 01/06 - 15/06</td>
+      <td style="font-weight:600">FERNANDO LUIZ GARCIA MAGNO</td>
+      <td style="white-space:nowrap">R$&nbsp;78.062,72</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">UC CONTINUA CORTADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Enviado para campo SS de vistoria 195559040 dia 13/05, executado ss 195717764 dia 20/05/ Gerado SS 196224989 dia 31/05, fechada dia 01/06 retirado  porta fusível) / 196616237, fechada 18/06 segue suspensa.">Enviado para campo SS de vistoria 195559040 dia 13/05…</td>
+      <td style="font-size:11px">Vistoria Grupo A</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">195558978</td>
+      <td style="font-family:monospace;font-size:11px">336956401240</td>
+      <td style="font-size:11px">10/05/2026</td>
+      <td style="font-size:11px">18/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">195839852 /  196255712 / 196407254</td>
+      <td style="font-size:11px">19/05 - 01/06 - 07/06</td>
+      <td style="font-size:11px">22/05/2026 - 08/06/2026</td>
+      <td style="font-weight:600">EGP - EMPRESA GLOBAL DE PROJETOS E OBRAS LTDA</td>
+      <td style="white-space:nowrap">R$&nbsp;68.109,90</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">UC CONTINUA CORTADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Executado SS 195839852 dia 22/05 / Gerado nova SS 196255712 dia 01/06,  para retirada do porta fusível / 196437761 - GERADO 09/06, Gerado nova vistoria em 29/06">Executado SS 195839852 dia 22/05 / Gerado nova SS 196…</td>
+      <td style="font-size:11px">Vistoria Grupo A</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-a">A</span></td>
+      <td class="col-fix col-fix-1">SUDOESTE</td>
+      <td class="col-fix col-fix-2">MONTES BELOS</td>
+      <td style="font-family:monospace;font-size:11px">196241635</td>
+      <td style="font-family:monospace;font-size:11px">85612601281</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196270601</td>
+      <td style="font-size:11px">02/06/2026</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-weight:600">CARLOS ALVES DE LELES</td>
+      <td style="white-space:nowrap">R$&nbsp;23.297,04</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">CADEADO NA CAIXA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="GERADO NOVA SUSPENSÃO">GERADO NOVA SUSPENSÃO</td>
+      <td style="font-size:11px">Vistoria Grupo A</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORDESTE</td>
+      <td class="col-fix col-fix-2">FORMOSA</td>
+      <td style="font-family:monospace;font-size:11px">196238022</td>
+      <td style="font-family:monospace;font-size:11px">132654701278</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">10/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196670166</td>
+      <td style="font-size:11px">16/06/2026</td>
+      <td style="font-size:11px">16/06/2026</td>
+      <td style="font-weight:600">EDIMILSON CORINO DE MELO</td>
+      <td style="white-space:nowrap">R$&nbsp;1.958,53</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Suspenso na chave / Protestado">Suspenso na chave / Protestado</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORDESTE</td>
+      <td class="col-fix col-fix-2">FORMOSA</td>
+      <td style="font-family:monospace;font-size:11px">195781655</td>
+      <td style="font-family:monospace;font-size:11px">210238401261</td>
+      <td style="font-size:11px">17/05/2026</td>
+      <td style="font-size:11px">17/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196259703</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">08/06/2026</td>
+      <td style="font-weight:600">ALENCAR XAVIER DE ARAUJO</td>
+      <td style="white-space:nowrap">R$&nbsp;1.887,46</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA / EXECUTADO</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Continua suspenso / Cliente chegou a aceitar a negociacao, porem parou de responder na hora de firmar o acordo / enviado para protesto">Continua suspenso / Cliente chegou a aceitar a negoci…</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORDESTE</td>
+      <td class="col-fix col-fix-2">FORMOSA</td>
+      <td style="font-family:monospace;font-size:11px">194945103</td>
+      <td style="font-family:monospace;font-size:11px">238931701239</td>
+      <td style="font-size:11px">22/04/2026</td>
+      <td style="font-size:11px">05/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196301281</td>
+      <td style="font-size:11px">03/06/2026</td>
+      <td style="font-size:11px">11/06/2026</td>
+      <td style="font-weight:600">JOAO GONCALVES FILHO</td>
+      <td style="white-space:nowrap">R$&nbsp;1.418,91</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA  / CANCELADA PELO SISTEMA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Cliente suspenso, vistoriado e continua cortado. Enviado para protesto.">Cliente suspenso, vistoriado e continua cortado. Envi…</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORDESTE</td>
+      <td class="col-fix col-fix-2">LUZIÂNIA</td>
+      <td style="font-family:monospace;font-size:11px">195230487</td>
+      <td style="font-family:monospace;font-size:11px">283158601208</td>
+      <td style="font-size:11px">30/04/2026</td>
+      <td style="font-size:11px">04/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196721849</td>
+      <td style="font-size:11px">18/06/2026</td>
+      <td style="font-size:11px">30/06/2026</td>
+      <td style="font-weight:600">VALDIRENE LOPES BARBOSA</td>
+      <td style="white-space:nowrap">R$&nbsp;1.144,15</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/MEDIDOR NÃO CONFERE</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Continua suspenso / Feito contato telefonico sem sucesso. Protestado">Continua suspenso / Feito contato telefonico sem suce…</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORDESTE</td>
+      <td class="col-fix col-fix-2">FORMOSA</td>
+      <td style="font-family:monospace;font-size:11px">195785547</td>
+      <td style="font-family:monospace;font-size:11px">380191101241</td>
+      <td style="font-size:11px">17/05/2026</td>
+      <td style="font-size:11px">17/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196259780</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">03/06/2026</td>
+      <td style="font-weight:600">JORGE AUGUSTO GONCALVES DE ASSIS</td>
+      <td style="white-space:nowrap">R$&nbsp;627,31</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">UC CONTINUA CORTADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Continua suspenso / Feito contato sem sucesso. Enviado para protesto.">Continua suspenso / Feito contato sem sucesso. Enviad…</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196470920</td>
+      <td style="font-family:monospace;font-size:11px">420752101288</td>
+      <td style="font-size:11px">10/06/2026</td>
+      <td style="font-size:11px">11/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196935421</td>
+      <td style="font-size:11px">24/06/2026</td>
+      <td style="font-size:11px">25/06/2026</td>
+      <td style="font-weight:600">LUCIELIO JESUS DA SILVA</td>
+      <td style="white-space:nowrap">R$&nbsp;5.632,26</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="executado corte sem ação por parte do cliente aberto vistoria  SS			197210285 aberta dia 30/06/2026">executado corte sem ação por parte do cliente aberto …</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196238068</td>
+      <td style="font-family:monospace;font-size:11px">438635501269</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">15/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196670178</td>
+      <td style="font-size:11px">16/06/2026</td>
+      <td style="font-size:11px">16/06/2026</td>
+      <td style="font-weight:600">LEANDRO DE JESUS LUIS</td>
+      <td style="white-space:nowrap">R$&nbsp;3.285,94</td>
+      <td>Normal</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="PAGO">PAGO</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196611721</td>
+      <td style="font-family:monospace;font-size:11px">349016001224</td>
+      <td style="font-size:11px">14/06/2026</td>
+      <td style="font-size:11px">15/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196864486</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-size:11px">-</td>
+      <td style="font-weight:600">ROSEMIR CORREIA DA COSTA</td>
+      <td style="white-space:nowrap">R$&nbsp;2.913,19</td>
+      <td>Normal</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="PAGO">PAGO</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196238044</td>
+      <td style="font-family:monospace;font-size:11px">128120401215</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">02/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196862498</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-size:11px">24/06/2026</td>
+      <td style="font-weight:600">JOSE WILSON ALVES</td>
+      <td style="white-space:nowrap">R$&nbsp;278,19</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="executado corte sem ação por parte do cliente aberto vistoria  SS	197210852 aberta dia 30/06/2026">executado corte sem ação por parte do cliente aberto …</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196670179</td>
+      <td style="font-family:monospace;font-size:11px">349016001224</td>
+      <td style="font-size:11px">16/06/2026</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196935475</td>
+      <td style="font-size:11px">24/06/2026</td>
+      <td style="font-size:11px">24/06/2026</td>
+      <td style="font-weight:600">ROSEMIR CORREIA DA COSTA</td>
+      <td style="white-space:nowrap">R$&nbsp;1.436,67</td>
+      <td>Normal</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="PAGO">PAGO</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196719602</td>
+      <td style="font-family:monospace;font-size:11px">382757101239</td>
+      <td style="font-size:11px">18/06/2026</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196872051</td>
+      <td style="font-size:11px">26/06/2026</td>
+      <td style="font-size:11px">-</td>
+      <td style="font-weight:600">ADAMAUIR DE FREITAS</td>
+      <td style="white-space:nowrap">R$&nbsp;1.436,67</td>
+      <td>Normal</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Aberto suspensão prazo de execução ate quinta feira">Aberto suspensão prazo de execução ate quinta feira</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">NORTE</td>
+      <td class="col-fix col-fix-2">ANÁPOLIS</td>
+      <td style="font-family:monospace;font-size:11px">196237991</td>
+      <td style="font-family:monospace;font-size:11px">435642301248</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">10/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196508476</td>
+      <td style="font-size:11px">11/06/2026</td>
+      <td style="font-size:11px">17/06/2026</td>
+      <td style="font-weight:600">ACQUA CORUMBA PSICULTURA</td>
+      <td style="white-space:nowrap">R$&nbsp;1.234,57</td>
+      <td>Normal</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="PAGO">PAGO</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">METROPOLITANA</td>
+      <td style="font-family:monospace;font-size:11px">195054029</td>
+      <td style="font-family:monospace;font-size:11px">25375201237</td>
+      <td style="font-size:11px">24/04/2026</td>
+      <td style="font-size:11px">04/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196347370</td>
+      <td style="font-size:11px">05/06/2026</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">HELIO BATISTA FERREIRA</td>
+      <td style="white-space:nowrap">R$&nbsp;9.038,73</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Retirada de ramal 196865118, foi direcionado para STC">Retirada de ramal 196865118, foi direcionado para STC</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">METROPOLITANA</td>
+      <td style="font-family:monospace;font-size:11px">195550450</td>
+      <td style="font-family:monospace;font-size:11px">375284501272</td>
+      <td style="font-size:11px">10/05/2026</td>
+      <td style="font-size:11px">13/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196259865</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">CELSO FERREIRA DE OLIVEIRA</td>
+      <td style="white-space:nowrap">R$&nbsp;6.334,90</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/MEDIDOR NÃO CONFERE - PORTEIRA TRANCADA</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Retirada de ramal 196882326, foi direcionado para STC">Retirada de ramal 196882326, foi direcionado para STC</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">GOIÂNIA</td>
+      <td style="font-family:monospace;font-size:11px">195685165</td>
+      <td style="font-family:monospace;font-size:11px">698701200</td>
+      <td style="font-size:11px">14/05/2026</td>
+      <td style="font-size:11px">25/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196865155</td>
+      <td style="font-size:11px">22/06/2026</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">PRO SAUDE LABORATORIO LTDA</td>
+      <td style="white-space:nowrap">R$&nbsp;7.045,19</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">SEM ACESSO/ MEDIDOR INTERNO</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Vistoria de medidor 196865155, foi direcionado para STC">Vistoria de medidor 196865155, foi direcionado para STC</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">GOIÂNIA</td>
+      <td style="font-family:monospace;font-size:11px">196616113</td>
+      <td style="font-family:monospace;font-size:11px">420125001236</td>
+      <td style="font-size:11px">14/06/2026</td>
+      <td style="font-size:11px">15/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">197211933</td>
+      <td style="font-size:11px">30/06/2026</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">STEPHANIE DE PAULA GARCIA</td>
+      <td style="white-space:nowrap">R$&nbsp;6.257,70</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Retirada de ramal 197211933, foi direcionado para STC">Retirada de ramal 197211933, foi direcionado para STC</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">CENTRO</td>
+      <td class="col-fix col-fix-2">GOIÂNIA</td>
+      <td style="font-family:monospace;font-size:11px">196549844</td>
+      <td style="font-family:monospace;font-size:11px">3548601252</td>
+      <td style="font-size:11px">12/06/2026</td>
+      <td style="font-size:11px">13/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">197212091</td>
+      <td style="font-size:11px">30/06/2026</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">MURILLO CAIXETA GONZAGA BELTRAN</td>
+      <td style="white-space:nowrap">R$&nbsp;4.172,08</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">SEM ACESSO/ MEDIDOR INTERNO</td>
+      <td><span class="tag tag-em">Em Tratativa</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Retirada de ramal 197212091, foi direcionado para STC">Retirada de ramal 197212091, foi direcionado para STC</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">196650983</td>
+      <td style="font-family:monospace;font-size:11px">257001901268</td>
+      <td style="font-size:11px">15/06/2026</td>
+      <td style="font-size:11px">16/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196691170</td>
+      <td style="font-size:11px">17/06/2026</td>
+      <td style="font-size:11px">18/06/2026</td>
+      <td style="font-weight:600">ALESSANDRA FATIMA TELES</td>
+      <td style="white-space:nowrap">R$&nbsp;172.199,97</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">CADEADO NA CAIXA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Corte executado dia 18/06">Corte executado dia 18/06</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">195457104</td>
+      <td style="font-family:monospace;font-size:11px">86404201237</td>
+      <td style="font-size:11px">07/05/2026</td>
+      <td style="font-size:11px">26/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196242233</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">02/06/2026</td>
+      <td style="font-weight:600">WALERIA DE SOUZA ALVES</td>
+      <td style="white-space:nowrap">R$&nbsp;79.769,27</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">CLIENTE NÃO PERMITIU CORTE</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Vistoria 196242233 GERADO 01/06 E FECHADO 02/06 / Perdas atuou dia 10/06 retirando medidor e porta fusível./ 11/06 solicitado troca de titularidade, indeferida dia 18/06 GR / Gerado Inspeção de Pardas no dia 18/06, e ainda aguardando execução da ação em 01/07.">Vistoria 196242233 GERADO 01/06 E FECHADO 02/06 / Per…</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">195436945</td>
+      <td style="font-family:monospace;font-size:11px">129577501253</td>
+      <td style="font-size:11px">06/05/2026</td>
+      <td style="font-size:11px">14/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">195722934 / 196027499</td>
+      <td style="font-size:11px">15-25/05</td>
+      <td style="font-size:11px">16-26/05/2026</td>
+      <td style="font-weight:600">CAIRO GIL BORGES</td>
+      <td style="white-space:nowrap">R$&nbsp;76.809,66</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">UC CONTINUA CORTADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="SS 195722934 fechada (16/05) / 196027499 - 26/05 ) / 196477904  nova vistoria fechada dia 10/06 / Realizado vistoria dia 10/06 no local, equipe ameaçada pelo cliente,  acionado perdas">SS 195722934 fechada (16/05) / 196027499 - 26/05 ) / …</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">196485155</td>
+      <td style="font-family:monospace;font-size:11px">186506201201</td>
+      <td style="font-size:11px">10/06/2026</td>
+      <td style="font-size:11px">11/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">ROGERIO FIGUEIREDO DE FREITAS</td>
+      <td style="white-space:nowrap">R$&nbsp;74.437,22</td>
+      <td>Normal</td>
+      <td style="font-size:11px">FATURA PAGA</td>
+      <td><span class="tag tag-pago">Pago</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Cliente realizou o pagamento da fatura e saiu da regua de cobrança">Cliente realizou o pagamento da fatura e saiu da regu…</td>
+      <td style="font-size:11px">—</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">195475830</td>
+      <td style="font-family:monospace;font-size:11px">186597801287</td>
+      <td style="font-size:11px">07/05/2026</td>
+      <td style="font-size:11px">11/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">195809801</td>
+      <td style="font-size:11px">18/05/2026</td>
+      <td style="font-size:11px">18/05/2026</td>
+      <td style="font-weight:600">ANFRE GONZAGA GARCIA BELTRAM</td>
+      <td style="white-space:nowrap">R$&nbsp;62.656,80</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Enviado para campo SS de suspensão 195475830, dia 11/05. / SS 195809801 fechada (18/05), clinete esboçou interesse na negociação, porém ainda não fechou. / gerado vistoria para acompanhamento, 196677843, dia 16/06. Em 21/06 Foi realizada nova vistoria, e realizado a abertura da chave 21 do cliente.">Enviado para campo SS de suspensão 195475830, dia 11/…</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUL</td>
+      <td class="col-fix col-fix-2">MORRINHOS</td>
+      <td style="font-family:monospace;font-size:11px">196284634</td>
+      <td style="font-family:monospace;font-size:11px">86296501204</td>
+      <td style="font-size:11px">02/06/2026</td>
+      <td style="font-size:11px">08/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196485088 /197207166</td>
+      <td style="font-size:11px">10/06/2026</td>
+      <td style="font-size:11px">11/06/2026</td>
+      <td style="font-weight:600">ADELSON DIAS CORREA</td>
+      <td style="white-space:nowrap">R$&nbsp;39.184,64</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="196485088, fechada 11/06, gerada nova vistoria e solicitado retirada de medidor em 29/06 197207166.">196485088, fechada 11/06, gerada nova vistoria e soli…</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUDOESTE</td>
+      <td class="col-fix col-fix-2">MONTES BELOS</td>
+      <td style="font-family:monospace;font-size:11px">195188202</td>
+      <td style="font-family:monospace;font-size:11px">263350701283</td>
+      <td style="font-size:11px">29/04/2026</td>
+      <td style="font-size:11px">04/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">195351418</td>
+      <td style="font-size:11px">04/05/2026</td>
+      <td style="font-size:11px">05/05/2026</td>
+      <td style="font-weight:600">DIVINA DE FATIMA TAVARES</td>
+      <td style="white-space:nowrap">R$&nbsp;5.661,89</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">UC CONTINUA CORTADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="sem leitura + 12">sem leitura + 12</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUDOESTE</td>
+      <td class="col-fix col-fix-2">MONTES BELOS</td>
+      <td style="font-family:monospace;font-size:11px">195410399</td>
+      <td style="font-family:monospace;font-size:11px">101280601229</td>
+      <td style="font-size:11px">06/05/2026</td>
+      <td style="font-size:11px">06/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">195554509</td>
+      <td style="font-size:11px">10/05/2026</td>
+      <td style="font-size:11px">12/05/2026</td>
+      <td style="font-weight:600">HELIO RODRIGUES DOS SANTOS</td>
+      <td style="white-space:nowrap">R$&nbsp;1.689,83</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Corte executado">Corte executado</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUDOESTE</td>
+      <td class="col-fix col-fix-2">IPORÁ</td>
+      <td style="font-family:monospace;font-size:11px">195785136</td>
+      <td style="font-family:monospace;font-size:11px">364770301200</td>
+      <td style="font-size:11px">18/05/2026</td>
+      <td style="font-size:11px">17/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">JOSIANE RODRIGUES DOS SANTOS</td>
+      <td style="white-space:nowrap">R$&nbsp;112,09</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">UC CONTINUA CORTADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="sem leitura + 12">sem leitura + 12</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUDOESTE</td>
+      <td class="col-fix col-fix-2">MONTES BELOS</td>
+      <td style="font-family:monospace;font-size:11px">196004365</td>
+      <td style="font-family:monospace;font-size:11px">171709701209</td>
+      <td style="font-size:11px">25/05/2026</td>
+      <td style="font-size:11px">24/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">MARIA MOREIRA DE J OSTAQUIA</td>
+      <td style="white-space:nowrap">R$&nbsp;624,89</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/DEOMOLIDO</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="sem leitura + 12">sem leitura + 12</td>
+      <td style="font-size:11px">Protesto</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUDOESTE</td>
+      <td class="col-fix col-fix-2">MONTES BELOS</td>
+      <td style="font-family:monospace;font-size:11px">195383995</td>
+      <td style="font-family:monospace;font-size:11px">198069401203</td>
+      <td style="font-size:11px">06/05/2026</td>
+      <td style="font-size:11px">05/05/2026</td>
+      <td style="font-family:monospace;font-size:11px">196242404</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">—</td>
+      <td style="font-weight:600">SERGIO LUCIO ZAGO</td>
+      <td style="white-space:nowrap">R$&nbsp;437,84</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="sem leitura + 12">sem leitura + 12</td>
+      <td style="font-size:11px">Vistoria Poste</td>
+    </tr><tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge badge-b">B</span></td>
+      <td class="col-fix col-fix-1">SUDOESTE</td>
+      <td class="col-fix col-fix-2">MONTES BELOS</td>
+      <td style="font-family:monospace;font-size:11px">196242195</td>
+      <td style="font-family:monospace;font-size:11px">198276801214</td>
+      <td style="font-size:11px">01/06/2026</td>
+      <td style="font-size:11px">19/06/2026</td>
+      <td style="font-family:monospace;font-size:11px">196816455</td>
+      <td style="font-size:11px">21/06/2026</td>
+      <td style="font-size:11px">29/06/2026</td>
+      <td style="font-weight:600">JEAN CARLOS PEIXOTO GARCIA</td>
+      <td style="white-space:nowrap">R$&nbsp;1.704,63</td>
+      <td>Suspenso</td>
+      <td style="font-size:11px">NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA</td>
+      <td><span class="tag tag-exec">Executado</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="Vistoriada 29/06">Vistoriada 29/06</td>
+      <td style="font-size:11px">—</td>
+    </tr></tbody>
+        </table>
+      </div>
+      <div class="table-footer" id="tableFooter">45 registro(s) · Total débito: R$&nbsp;1.470.398,51</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── EMBEDDED DATA ────────────────────────────────────────────────────────────
+const EMBEDDED_DATA = {"grupoA": [{"Grupo": "A", "Superintendência": "NORDESTE", "SS": "195786505", "UC": "240949701271", "1º Geração": "17/05/2026", "1º Execução": "17/05/2026", "SS da última Geração": "196616239", "Última Geração": "14/06/2026", "Última atuação": "15/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "TALLISON CRISTHIAN MUHL", "Valor do débito": "3723.34", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "FORMOSA", "Resumo": "UC continua cortada / Protestado.", "Status": "Executado", "Última tratativa": "Protesto sugerido", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "NORDESTE", "SS": "196691286", "UC": "202062001269", "1º Geração": "17/06/2026", "1º Execução": "18/06/2026", "SS da última Geração": "196804774", "Última Geração": "21/06/2026", "Última atuação": "25/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "SOLAR EMPRESARIAL", "Valor do débito": "26020.7", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "LUZIÂNIA", "Resumo": "Retirado fusivel / Consultor tentando renegociação / Protestado", "Status": "Executado", "Última tratativa": "", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "NORTE", "SS": "196691228", "UC": "167477301285", "1º Geração": "17/06/2026", "1º Execução": "03/07/2026", "SS da última Geração": "-", "Última Geração": "-", "Última atuação": "-", "Fornecimento": "Normal", "Nome do Cliente": "FAZENDA VERA CRUZ", "Valor do débito": "23109.69", "Fechamento": "NE/PAGO", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "NORTE", "SS": "196691245", "UC": "360479001263", "1º Geração": "17/06/2026", "1º Execução": "03/07/2026", "SS da última Geração": "-", "Última Geração": "-", "Última atuação": "-", "Fornecimento": "Normal", "Nome do Cliente": "MAIRA AVILA DE PAIVA", "Valor do débito": "20730.88", "Fechamento": "NE/PAGO", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "NORTE", "SS": "196241664", "UC": "440024101270", "1º Geração": "01/06/2026", "1º Execução": "08/06/2026", "SS da última Geração": "-", "Última Geração": "-", "Última atuação": "-", "Fornecimento": "Normal", "Nome do Cliente": "SPE LUGASA PEAK RESIDENCIAL  CAPRI LTDA", "Valor do débito": "16265.07", "Fechamento": "CLIENTE NÃO PERMITIU CORTE", "Regional": "ANÁPOLIS", "Resumo": "Debito é referente a um TOI, consultora responsavel esta em contato com o cliente para realizar negociação referente ao debito", "Status": "Em Tratativa", "Última tratativa": "", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "NORTE", "SS": "196804762", "UC": "400491401287", "1º Geração": "21/06/2023", "1º Execução": "22/06/2026", "SS da última Geração": "-", "Última Geração": "-", "Última atuação": "-", "Fornecimento": "Normal", "Nome do Cliente": "CONSORCIO BC ENERGIA GO 01", "Valor do débito": "16434.96", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "NORTE", "SS": "196804778", "UC": "400491201209", "1º Geração": "21/06/2023", "1º Execução": "22/06/2026", "SS da última Geração": "-", "Última Geração": "-", "Última atuação": "-", "Fornecimento": "Normal", "Nome do Cliente": "CONSORCIO BC ENERGIA GO 01", "Valor do débito": "16830.55", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "CENTRO", "SS": "196691292", "UC": "18717301220", "1º Geração": "17/06/2026", "1º Execução": "18/06/2026", "SS da última Geração": "", "Última Geração": "", "Última atuação": "", "Fornecimento": "Normal", "Nome do Cliente": "OSVALDO DENIS", "Valor do débito": "3428.5", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "GOIÂNIA", "Resumo": "Cliente fez promessa de pagamento para 07/07/2026", "Status": "Em Tratativa", "Última tratativa": "Protesto", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "CENTRO", "SS": "195781974", "UC": "440381101257", "1º Geração": "17/05/2026", "1º Execução": "18/05/2026", "SS da última Geração": "196428083", "Última Geração": "08/06/2026", "Última atuação": "09/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "SHAMIA MARTINS MENDES", "Valor do débito": "721.08", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "METROPOLITANA", "Resumo": "Cliente fez promessa de pagamento para 07/07/2026", "Status": "Em Tratativa", "Última tratativa": "Protesto", "Próxima ação": "", "Prazo": ""}, {"Grupo": "A", "Superintendência": "SUL", "SS": "196241605", "UC": "153975501254", "1º Geração": "01/06/2026", "1º Execução": "02/06/2026", "SS da última Geração": "196657998", "Última Geração": "07/06/2026 / 15/06/2026", "Última atuação": "09/06/2026 / 18/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "CONDOMINIO DO EDIFICIO GOLDEN DOLPHIN RESORT", "Valor do débito": "314116.06", "Fechamento": "CLIENTE NÃO PERMITIU CORTE", "Regional": "MORRINHOS", "Resumo": "Gerada dia 07 e cortado 09/06, pela SS 196407329 / gerado dia 15/06, fechado dia 18/06 com a liminar e policia // GERADO nova VISTORIA dia 22/06 - 196860776, retirada do porta fusível e medidor. Em 24/06, foi aberto ss de Restabelecimento Juridico, e restabelecido em 25/06", "Status": "Executado", "Última tratativa": "Realizado Restabelecimento Juridico, todas as faturas então com restrição PRJ. Sem ação.", "Próxima ação": "Apoio Security", "Prazo": ""}, {"Grupo": "A", "Superintendência": "SUL", "SS": "195717729", "UC": "307767101213", "1º Geração": "15/05/2026", "1º Execução": "18/05/2026", "SS da última Geração": "195839839 /  195957991 / 196006382 / 196019653 / 196224722", "Última Geração": "19-22-24-25-31/05", "Última atuação": "19-22-26-28/05 - 01/06 - 11/06", "Fornecimento": "Suspenso", "Nome do Cliente": "NUTRATTA", "Valor do débito": "217092.09", "Fechamento": "UC CONTINUA CORTADA", "Regional": "MORRINHOS", "Resumo": "Enviado para campo SS de vistoria 195717729, dia 18/05, executado SS 	195839839 (19)/	195957991 (22)/ 196006382 (24) / SS 196224722 gerada dia 31/05, fechada dia 01/06 retirado porta fusível / 196510847 - 11/06", "Status": "Executado", "Última tratativa": "Judicializado 24/06", "Próxima ação": "Vistoria Grupo A", "Prazo": ""}, {"Grupo": "A", "Superintendência": "SUL", "SS": "196650983", "UC": "244025801236", "1º Geração": "15/06/2026", "1º Execução": "09/06/2026", "SS da última Geração": "196657311", "Última Geração": "15/06/2026", "Última atuação": "16/06/2026", "Fornecimento": "Normal", "Nome do Cliente": "HPO ADMINISTRACAO DE CLUBES E HOTEIS LTDA", "Valor do débito": "52552.22", "Fechamento": "CLIENTE NÃO PERMITIU CORTE", "Regional": "MORRINHOS", "Resumo": "Cliente realizou o pagamento das faturas 04/2026 e 05/2026. Por esse motivo, o cliente saiu da regua de cobrança.  Tem uma fatura vencida em 25/06, foi solicitado o envio do reaviso especial.", "Status": "Pago", "Última tratativa": "Restabelecido - Solicitado Reaviso Especial em 06/07 (fatura vencida em 25/06)", "Próxima ação": "Vistoria Grupo A", "Prazo": ""}, {"Grupo": "A", "Superintendência": "SUL", "SS": "196241607", "UC": "99010701297", "1º Geração": "01/06/2026", "1º Execução": "13/05/2026", "SS da última Geração": "195717764 / 195958006 / 196224989 / 196616237", "Última Geração": "15-22-31/05 - 14/06/2026", "Última atuação": "20-25/05 - 01/06 - 15/06", "Fornecimento": "Suspenso", "Nome do Cliente": "FERNANDO LUIZ GARCIA MAGNO", "Valor do débito": "78062.72", "Fechamento": "UC CONTINUA CORTADA", "Regional": "MORRINHOS", "Resumo": "Enviado para campo SS de vistoria 195559040 dia 13/05, executado ss 195717764 dia 20/05/ Gerado SS 196224989 dia 31/05, fechada dia 01/06 retirado  porta fusível) / 196616237, fechada 18/06 segue suspensa.", "Status": "Executado", "Última tratativa": "Já protestado. Aguardando judicialização. Consultor realzando a Montagem do Dossie", "Próxima ação": "Vistoria Grupo A", "Prazo": ""}, {"Grupo": "A", "Superintendência": "SUL", "SS": "195558978", "UC": "336956401240", "1º Geração": "10/05/2026", "1º Execução": "18/05/2026", "SS da última Geração": "195839852 /  196255712 / 196407254", "Última Geração": "19/05 - 01/06 - 07/06", "Última atuação": "22/05/2026 - 08/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "EGP - EMPRESA GLOBAL DE PROJETOS E OBRAS LTDA", "Valor do débito": "68109.9", "Fechamento": "UC CONTINUA CORTADA", "Regional": "MORRINHOS", "Resumo": "Executado SS 195839852 dia 22/05 / Gerado nova SS 196255712 dia 01/06,  para retirada do porta fusível / 196437761 - GERADO 09/06, Gerado nova vistoria em 29/06", "Status": "Executado", "Última tratativa": "Suspenso / Protestado  / Enviado para Judicialização / Gerada nova Vistoria  197564842 em 06/07 (Todos as 5 ucs do clente em questão estão suspensas)", "Próxima ação": "Vistoria Grupo A", "Prazo": ""}, {"Grupo": "A", "Superintendência": "SUDOESTE", "SS": "196241635", "UC": "85612601281", "1º Geração": "01/06/2026", "1º Execução": "01/06/2026", "SS da última Geração": "197569271", "Última Geração": "06/07/2026", "Última atuação": "", "Fornecimento": "Suspenso", "Nome do Cliente": "CARLOS ALVES DE LELES", "Valor do débito": "23297.04", "Fechamento": "CADEADO NA CAIXA", "Regional": "MONTES BELOS", "Resumo": "Gerado 3ª vistoria", "Status": "Em Tratativa", "Última tratativa": "Negociando com cliente", "Próxima ação": "Vistoria Grupo A", "Prazo": ""}], "grupoB": [{"Grupo": "B", "Superintendência": "NORDESTE", "SS": "196238022", "UC": "132654701278", "1º Geração": "01/06/2026", "1º Execução": "10/06/2026", "SS da última Geração": "196670166", "Última Geração": "16/06/2026", "Última atuação": "16/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "EDIMILSON CORINO DE MELO", "Valor do débito": "1958.53", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "FORMOSA", "Resumo": "Suspenso na chave / Protestado", "Status": "Executado", "Última tratativa": "", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORDESTE", "SS": "195781655", "UC": "210238401261", "1º Geração": "17/05/2026", "1º Execução": "17/05/2026", "SS da última Geração": "196259703", "Última Geração": "01/06/2026", "Última atuação": "08/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "ALENCAR XAVIER DE ARAUJO", "Valor do débito": "1887.46", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA / EXECUTADO", "Regional": "FORMOSA", "Resumo": "Continua suspenso / Cliente chegou a aceitar a negociacao, porem parou de responder na hora de firmar o acordo / enviado para protesto", "Status": "Executado", "Última tratativa": "Suspensão / Contato com o cliente", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORDESTE", "SS": "194945103", "UC": "238931701239", "1º Geração": "22/04/2026", "1º Execução": "05/05/2026", "SS da última Geração": "196301281", "Última Geração": "03/06/2026", "Última atuação": "11/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "JOAO GONCALVES FILHO", "Valor do débito": "1418.91", "Fechamento": "NE/PORTEIRA  / CANCELADA PELO SISTEMA", "Regional": "FORMOSA", "Resumo": "Cliente suspenso, vistoriado e continua cortado. Enviado para protesto.", "Status": "Executado", "Última tratativa": "Suspensão / Contato com o cliente", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORDESTE", "SS": "195230487", "UC": "283158601208", "1º Geração": "30/04/2026", "1º Execução": "04/05/2026", "SS da última Geração": "196721849", "Última Geração": "18/06/2026", "Última atuação": "30/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "VALDIRENE LOPES BARBOSA", "Valor do débito": "1144.15", "Fechamento": "NE/MEDIDOR NÃO CONFERE", "Regional": "LUZIÂNIA", "Resumo": "Continua suspenso / Feito contato telefonico sem sucesso. Protestado", "Status": "Executado", "Última tratativa": "Vistoria / Contato telefonico", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORDESTE", "SS": "195785547", "UC": "380191101241", "1º Geração": "17/05/2026", "1º Execução": "17/05/2026", "SS da última Geração": "196259780", "Última Geração": "01/06/2026", "Última atuação": "03/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "JORGE AUGUSTO GONCALVES DE ASSIS", "Valor do débito": "627.31", "Fechamento": "UC CONTINUA CORTADA", "Regional": "FORMOSA", "Resumo": "Continua suspenso / Feito contato sem sucesso. Enviado para protesto.", "Status": "Executado", "Última tratativa": "Vistoria / Contato telefonico", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORTE", "SS": "196470920", "UC": "420752101288", "1º Geração": "10/06/2026", "1º Execução": "11/06/2026", "SS da última Geração": "196935421", "Última Geração": "24/06/2026", "Última atuação": "25/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "LUCIELIO JESUS DA SILVA", "Valor do débito": "5632.26", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "executado corte sem ação por parte do cliente aberto vistoria  SS 197566091 aberta dia 06/07/2026", "Status": "Em Tratativa", "Última tratativa": "-", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORTE", "SS": "196238068", "UC": "438635501269", "1º Geração": "01/06/2026", "1º Execução": "15/06/2026", "SS da última Geração": "196670178", "Última Geração": "16/06/2026", "Última atuação": "16/06/2026", "Fornecimento": "Normal", "Nome do Cliente": "LEANDRO DE JESUS LUIS", "Valor do débito": "3285.94", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "-", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORTE", "SS": "196611721", "UC": "349016001224", "1º Geração": "14/06/2026", "1º Execução": "15/06/2026", "SS da última Geração": "196864486", "Última Geração": "22/06/2026", "Última atuação": "-", "Fornecimento": "Normal", "Nome do Cliente": "ROSEMIR CORREIA DA COSTA", "Valor do débito": "2913.19", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORTE", "SS": "196238044", "UC": "128120401215", "1º Geração": "01/06/2026", "1º Execução": "02/06/2026", "SS da última Geração": "196862498", "Última Geração": "22/06/2026", "Última atuação": "24/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "JOSE WILSON ALVES", "Valor do débito": "278.19", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "executado corte sem ação por parte do cliente aberto vistoria   SS 197566171 aberta dia 06/07/2026", "Status": "Em Tratativa", "Última tratativa": "-", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORTE", "SS": "196670179", "UC": "349016001224", "1º Geração": "16/06/2026", "1º Execução": "22/06/2026", "SS da última Geração": "196935475", "Última Geração": "24/06/2026", "Última atuação": "24/06/2026", "Fornecimento": "Normal", "Nome do Cliente": "ROSEMIR CORREIA DA COSTA", "Valor do débito": "1436.67", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "-", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORTE", "SS": "196719602", "UC": "382757101239", "1º Geração": "18/06/2026", "1º Execução": "22/06/2026", "SS da última Geração": "196872051", "Última Geração": "26/06/2026", "Última atuação": "-", "Fornecimento": "Normal", "Nome do Cliente": "ADAMAUIR DE FREITAS", "Valor do débito": "1436.67", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "-", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "NORTE", "SS": "196237991", "UC": "435642301248", "1º Geração": "01/06/2026", "1º Execução": "10/06/2026", "SS da última Geração": "196508476", "Última Geração": "11/06/2026", "Última atuação": "17/06/2026", "Fornecimento": "Normal", "Nome do Cliente": "ACQUA CORUMBA PSICULTURA", "Valor do débito": "1234.57", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "ANÁPOLIS", "Resumo": "PAGO", "Status": "Pago", "Última tratativa": "-", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "CENTRO", "SS": "195054029", "UC": "25375201237", "1º Geração": "24/04/2026", "1º Execução": "04/05/2026", "SS da última Geração": "196865096", "Última Geração": "22/06/2026", "Última atuação": "22/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "HELIO BATISTA FERREIRA", "Valor do débito": "9038.73", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "METROPOLITANA", "Resumo": "Vistoria de corte 197577633, foi direcionado para STC", "Status": "Em Tratativa", "Última tratativa": "", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "CENTRO", "SS": "195685165", "UC": "698701200", "1º Geração": "14/05/2026", "1º Execução": "25/05/2026", "SS da última Geração": "196865155", "Última Geração": "22/06/2026", "Última atuação": "30/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "PRO SAUDE LABORATORIO LTDA", "Valor do débito": "7045.19", "Fechamento": "SEM ACESSO/ MEDIDOR INTERNO", "Regional": "GOIÂNIA", "Resumo": "Vistoria de medidor 1975777185, foi direcionado para STC", "Status": "Em Tratativa", "Última tratativa": "", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "CENTRO", "SS": "195550450", "UC": "375284501272", "1º Geração": "10/05/2026", "1º Execução": "13/05/2026", "SS da última Geração": "196882326", "Última Geração": "23/06/2026", "Última atuação": "23/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "CELSO FERREIRA DE OLIVEIRA", "Valor do débito": "6334.9", "Fechamento": "NE/MEDIDOR NÃO CONFERE - PORTEIRA TRANCADA", "Regional": "METROPOLITANA", "Resumo": "Vistoria de corte 197577770, foi direcionado para STC", "Status": "Em Tratativa", "Última tratativa": "", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "CENTRO", "SS": "195557446", "UC": "235832101240", "1º Geração": "10/05/2026", "1º Execução": "15/05/2026", "SS da última Geração": "197229669", "Última Geração": "30/06/2026", "Última atuação": "02/07/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "SERAPIAO PEREIRA LEMES NETO", "Valor do débito": "6324.49", "Fechamento": "CLIENTE NÃO PERMITIU CORTE", "Regional": "METROPOLITANA", "Resumo": "Em negociação com cliente", "Status": "Em Tratativa", "Última tratativa": "", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "CENTRO", "SS": "196616113", "UC": "420125001236", "1º Geração": "14/06/2026", "1º Execução": "15/06/2026", "SS da última Geração": "197211933", "Última Geração": "30/06/2026", "Última atuação": "02/07/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "STEPHANIE DE PAULA GARCIA", "Valor do débito": "6257.7", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "GOIÂNIA", "Resumo": "Retirada de ramal 197577879, foi direcionado para STC realizar corte severo.", "Status": "Em Tratativa", "Última tratativa": "", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUL", "SS": "196650983", "UC": "257001901268", "1º Geração": "15/06/2026", "1º Execução": "16/06/2026", "SS da última Geração": "196691170", "Última Geração": "17/06/2026", "Última atuação": "18/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "ALESSANDRA FATIMA TELES", "Valor do débito": "172199.97", "Fechamento": "CADEADO NA CAIXA", "Regional": "MORRINHOS", "Resumo": "Corte executado dia 18/06, Vistoria Gerada em 02/07 para retirada do Medidor.", "Status": "Executado", "Última tratativa": "Gerado Vistoria em 02/07  197349961 - Medição Blindada, orientado STC a realizar alinhamento para execução do serviço, junto a perdas. Foi gerado nova ss em 06/07 Sera retidado equipamento em até 07/07.", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUL", "SS": "195457104", "UC": "86404201237", "1º Geração": "07/05/2026", "1º Execução": "26/05/2026", "SS da última Geração": "196242233", "Última Geração": "01/06/2026", "Última atuação": "02/06/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "WALERIA DE SOUZA ALVES", "Valor do débito": "79769.27", "Fechamento": "CLIENTE NÃO PERMITIU CORTE", "Regional": "MORRINHOS", "Resumo": "Vistoria 196242233 GERADO 01/06 E FECHADO 02/06 / Perdas atuou dia 10/06 retirando medidor e porta fusível./ 11/06 solicitado troca de titularidade, indeferida dia 18/06 GR / Gerado Inspeção de Pardas no dia 18/06, e ainda aguardando execução da ação em 01/07.", "Status": "Executado", "Última tratativa": "Realizada ação Policial em 30/06 com retirada do Transformador, com autuação do responsavél pela instalação (Marido da Waleria) sem direito a fiança. Aguardando Audiencia de Custodia.", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUL", "SS": "195436945", "UC": "129577501253", "1º Geração": "06/05/2026", "1º Execução": "14/05/2026", "SS da última Geração": "195722934 / 196027499", "Última Geração": "15-25/05", "Última atuação": "16-26/05/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "CAIRO GIL BORGES", "Valor do débito": "76809.66", "Fechamento": "UC CONTINUA CORTADA", "Regional": "MORRINHOS", "Resumo": "SS 195722934 fechada (16/05) / 196027499 - 26/05 ) / 196477904  nova vistoria fechada dia 10/06 / Realizado vistoria dia 10/06 no local, equipe ameaçada pelo cliente,  acionado perdas", "Status": "Executado", "Última tratativa": "Gerado nova vistoria para retirada do equipamento, ss  196934990, porem o medidor não foi retirado. Gerada nova vistoria em 29/06 ss 197207196, a ss já foi executada, e já foi encaminhado para perdas atuar. Prazo até 20/07", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUL", "SS": "196485155", "UC": "186506201201", "1º Geração": "10/06/2026", "1º Execução": "11/06/2026", "SS da última Geração": "", "Última Geração": "", "Última atuação": "", "Fornecimento": "Normal", "Nome do Cliente": "ROGERIO FIGUEIREDO DE FREITAS", "Valor do débito": "74437.22", "Fechamento": "FATURA PAGA", "Regional": "MORRINHOS", "Resumo": "Cliente realizou o pagamento da fatura e saiu da regua de cobrança", "Status": "Pago", "Última tratativa": "", "Próxima ação": "", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUL", "SS": "195475830", "UC": "186597801287", "1º Geração": "07/05/2026", "1º Execução": "11/05/2026", "SS da última Geração": "195809801", "Última Geração": "18/05/2026", "Última atuação": "18/05/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "ANFRE GONZAGA GARCIA BELTRAM", "Valor do débito": "62656.8", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "MORRINHOS", "Resumo": "Enviado para campo SS de suspensão 195475830, dia 11/05. / SS 195809801 fechada (18/05), clinete esboçou interesse na negociação, porém ainda não fechou. / gerado vistoria para acompanhamento, 196677843, dia 16/06. Em 21/06 Foi realizada nova vistoria, e realizado a abertura da chave 21 do cliente.", "Status": "Executado", "Última tratativa": "Solicitado Judicialização (aguardando retorno) / Judicializado 23/06 - Aberta nova Vistoria 197212669, aguardando execução, estamos analisando o caso junto a perdas e STC, para a retirada do transformador, já foi verificado que o trafo so atende esse cliente, e o mesmo esta com avaço de Leitura.", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUL", "SS": "196284634", "UC": "86296501204", "1º Geração": "02/06/2026", "1º Execução": "08/06/2026", "SS da última Geração": "196485088 /197207166", "Última Geração": "10/06/2026", "Última atuação": "11/06/2026", "Fornecimento": "Normal", "Nome do Cliente": "ADELSON DIAS CORREA", "Valor do débito": "39184.64", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "MORRINHOS", "Resumo": "196485088, fechada 11/06, gerada nova vistoria e solicitado retirada de medidor em 29/06 197207166. Sem ação.", "Status": "Executado", "Última tratativa": "Cliente protestado. Foi aberta ss de Restabelecimento Fornecimento Juridico, e posteriormente, a uc foi restabelecida. Aguardar parecer juridico. Final da vigencia de PRJ em 07/2076", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUDOESTE", "SS": "195188202", "UC": "263350701283", "1º Geração": "29/04/2026", "1º Execução": "04/05/2026", "SS da última Geração": "195351418", "Última Geração": "04/05/2026", "Última atuação": "05/05/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "DIVINA DE FATIMA TAVARES", "Valor do débito": "5661.89", "Fechamento": "UC CONTINUA CORTADA", "Regional": "MONTES BELOS", "Resumo": "sem leitura + 12", "Status": "Executado", "Última tratativa": "Dossiê pronto para cancelamento", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUDOESTE", "SS": "195410399", "UC": "101280601229", "1º Geração": "06/05/2026", "1º Execução": "06/05/2026", "SS da última Geração": "195554509", "Última Geração": "10/05/2026", "Última atuação": "12/05/2026", "Fornecimento": "Suspenso", "Nome do Cliente": "HELIO RODRIGUES DOS SANTOS", "Valor do débito": "1689.83", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "MONTES BELOS", "Resumo": "Corte executado", "Status": "Executado", "Última tratativa": "Solicitado Proteto", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUDOESTE", "SS": "195785136", "UC": "364770301200", "1º Geração": "18/05/2026", "1º Execução": "17/05/2026", "SS da última Geração": "", "Última Geração": "", "Última atuação": "", "Fornecimento": "Suspenso", "Nome do Cliente": "JOSIANE RODRIGUES DOS SANTOS", "Valor do débito": "112.09", "Fechamento": "UC CONTINUA CORTADA", "Regional": "IPORÁ", "Resumo": "sem leitura + 12", "Status": "Executado", "Última tratativa": "Dossiê pronto para cancelamento", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUDOESTE", "SS": "196004365", "UC": "171709701209", "1º Geração": "25/05/2026", "1º Execução": "24/05/2026", "SS da última Geração": "", "Última Geração": "", "Última atuação": "", "Fornecimento": "Suspenso", "Nome do Cliente": "MARIA MOREIRA DE J OSTAQUIA", "Valor do débito": "624.89", "Fechamento": "NE/DEOMOLIDO", "Regional": "MONTES BELOS", "Resumo": "sem leitura + 12", "Status": "Executado", "Última tratativa": "Lista de cancelamento de contrato 6 meses sem leitura", "Próxima ação": "Protesto", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUDOESTE", "SS": "195383995", "UC": "198069401203", "1º Geração": "06/05/2026", "1º Execução": "05/05/2026", "SS da última Geração": "196242404", "Última Geração": "01/06/2026", "Última atuação": "", "Fornecimento": "Suspenso", "Nome do Cliente": "SERGIO LUCIO ZAGO", "Valor do débito": "437.84", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "MONTES BELOS", "Resumo": "sem leitura + 12", "Status": "Executado", "Última tratativa": "Lista de cancelamento de contrato", "Próxima ação": "Vistoria Poste", "Prazo": ""}, {"Grupo": "B", "Superintendência": "SUDOESTE", "SS": "197253224", "UC": "263668501219", "1º Geração": "01/07/2026", "1º Execução": "02/07/2026", "SS da última Geração": "197452977", "Última Geração": "05/07/2026", "Última atuação": "", "Fornecimento": "Normal", "Nome do Cliente": "GILDO THEODORO GRECHI", "Valor do débito": "361.65", "Fechamento": "NE/PORTEIRA OU SEM ACESSO MED. AGRUPADA", "Regional": "MONTES BELOS", "Resumo": "", "Status": "Em Tratativa", "Última tratativa": "Negociando", "Próxima ação": "", "Prazo": ""}]};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let allData = [...EMBEDDED_DATA.grupoA, ...EMBEDDED_DATA.grupoB];
+let filteredData = [...allData];
+let chartPizza = null, chartBarras = null;
+
+// ─── SINCRONIZAÇÃO COM GOOGLE SHEETS ───────────────────────────────────────────
+// A planilha alimenta o dashboard automaticamente: toda vez que a página é
+// carregada (ou quando o botão "Atualizar Agora" é clicado), os dados são lidos
+// diretamente das abas Base_Grupo_A e Base_Grupo_B do Google Sheets abaixo.
+// Requisito: a planilha precisa estar compartilhada como
+// "Qualquer pessoa com o link" → "Leitor".
+const SPREADSHEET_ID = '11perp_j_47EGPTeZ7RVtw2NqGdFarn-WbWPnZ1HLnVI';
+
+const COLS_ALL = ['Grupo','Superintendência','SS','UC','1º Geração','1º Execução',
+              'SS da última Geração','Última Geração','Última atuação',
+              'Fornecimento','Nome do Cliente','Valor do débito',
+              'Fechamento','Regional','Resumo','Status',
+              'Última tratativa','Próxima ação','Prazo'];
+
+// Mapa de cabeçalhos normalizados (sem acento/espaço) -> nome de coluna canônico.
+// Isso evita quebra caso a planilha tenha pequenas variações de acentuação.
+const CANONICAL_HEADERS = {
+  'grupo': 'Grupo',
+  'superintendencia': 'Superintendência',
+  'ss': 'SS',
+  'uc': 'UC',
+  '1geracao': '1º Geração',
+  '1execucao': '1º Execução',
+  'ssdaultimageracao': 'SS da última Geração',
+  'ultimageracao': 'Última Geração',
+  'ultimaatuacao': 'Última atuação',
+  'fornecimento': 'Fornecimento',
+  'nomedocliente': 'Nome do Cliente',
+  'valordodebito': 'Valor do débito',
+  'fechamento': 'Fechamento',
+  'regional': 'Regional',
+  'resumo': 'Resumo',
+  'status': 'Status',
+  'ultimatratativa': 'Última tratativa',
+  'proximaacao': 'Próxima ação',
+  'prazo': 'Prazo'
+};
+
+function normHeader(s) {
+  return String(s ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+// Converte "R$ 1.958,53" / "1958,53" / "23109.69" em string numérica "1958.53"
+function parseValorDebito(v) {
+  if (v === null || v === undefined) return '';
+  let s = String(v).trim();
+  if (!s) return '';
+  s = s.replace(/R\$\s*/gi, '').replace(/\s/g, '');
+  if (s.indexOf(',') !== -1) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? '' : String(n);
+}
+
+function sheetCsvUrl(sheetName) {
+  return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+}
+
+async function fetchSheetRows(sheetName, grupoFixo) {
+  const url = sheetCsvUrl(sheetName);
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error(`Não foi possível ler a aba "${sheetName}" (HTTP ${resp.status})`);
+  const csvText = await resp.text();
+  const parsed = Papa.parse(csvText.trim(), { skipEmptyLines: true });
+  const rows = parsed.data;
+  if (!rows.length) return [];
+
+  // Localiza a linha de cabeçalho procurando pelas colunas SS e UC
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(rows.length, 5); i++) {
+    const normRow = rows[i].map(normHeader);
+    if (normRow.includes('ss') && normRow.includes('uc')) { headerIdx = i; break; }
+  }
+  if (headerIdx === -1) throw new Error(`Cabeçalho não encontrado na aba "${sheetName}"`);
+
+  const headerRow = rows[headerIdx].map(normHeader);
+  const colMap = {}; // índice da coluna -> nome canônico
+  headerRow.forEach((h, i) => { if (CANONICAL_HEADERS[h]) colMap[i] = CANONICAL_HEADERS[h]; });
+  const ssColIdx = Object.keys(colMap).find(idx => colMap[idx] === 'SS');
+
+  const out = [];
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (ssColIdx === undefined || !r[ssColIdx] || String(r[ssColIdx]).trim() === '') continue;
+
+    const obj = {};
+    COLS_ALL.forEach(c => obj[c] = '');
+    Object.entries(colMap).forEach(([idx, name]) => {
+      obj[name] = r[idx] === undefined || r[idx] === null ? '' : String(r[idx]).trim();
+    });
+
+    obj['Grupo'] = grupoFixo;
+    if (obj['Status'] && obj['Status'].toLowerCase() === 'em tratativa') obj['Status'] = 'Em Tratativa';
+    if (obj['Fornecimento']) {
+      const fv = obj['Fornecimento'].toLowerCase();
+      if (fv.startsWith('suspens')) obj['Fornecimento'] = 'Suspenso';
+      else if (fv === 'normal') obj['Fornecimento'] = 'Normal';
+    }
+    obj['Valor do débito'] = parseValorDebito(obj['Valor do débito']);
+    out.push(obj);
+  }
+  return out;
+}
+
+async function loadFromGoogleSheets(manual = false) {
+  const statusEl = document.getElementById('syncStatus');
+  if (statusEl) statusEl.textContent = '🔄 Sincronizando com a planilha...';
+  try {
+    const [dataA, dataB] = await Promise.all([
+      fetchSheetRows('Base_Grupo_A', 'A'),
+      fetchSheetRows('Base_Grupo_B', 'B')
+    ]);
+    if (!dataA.length && !dataB.length) throw new Error('Nenhum registro encontrado nas abas Base_Grupo_A / Base_Grupo_B');
+
+    allData = [...dataA, ...dataB];
+    populateFilters();
+    applyFilters();
+
+    const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (statusEl) statusEl.textContent = `✅ Atualizado às ${agora} · ${allData.length} registros (A: ${dataA.length} / B: ${dataB.length})`;
+  } catch (err) {
+    console.error('Erro ao sincronizar com Google Sheets:', err);
+    if (statusEl) statusEl.textContent = '⚠️ Falha ao sincronizar — exibindo última base carregada';
+    if (manual) {
+      alert('Não foi possível atualizar a partir da planilha.\n\n' +
+            'Verifique se ela está compartilhada como "Qualquer pessoa com o link → Leitor" ' +
+            'e se as abas se chamam exatamente "Base_Grupo_A" e "Base_Grupo_B".\n\n' +
+            'Detalhe técnico: ' + err.message);
+    }
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  populateFilters();
+  applyFilters();
+  loadFromGoogleSheets();
+});
+
+function populateFilters() {
+  const sups = [...new Set(allData.map(r => r['Superintendência']))].sort();
+  const regs = [...new Set(allData.map(r => r['Regional']))].sort();
+  const forns = [...new Set(allData.map(r => r['Fornecimento']))].sort();
+  fillSelect('fSup', sups);
+  fillSelect('fReg', regs);
+  fillSelect('fForn', forns);
+}
+
+function fillSelect(id, values) {
+  const sel = document.getElementById(id);
+  // Limpar opções existentes mantendo só o primeiro item ("Todos/Todas")
+  while (sel.options.length > 1) sel.remove(1);
+  values.forEach(v => {
+    if (!v || v === 'undefined') return;
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    sel.appendChild(opt);
+  });
+}
+
+function applyFilters() {
+  const g = document.getElementById('fGrupo').value;
+  const s = document.getElementById('fSup').value;
+  const r = document.getElementById('fReg').value;
+  const f = document.getElementById('fForn').value;
+  filteredData = allData.filter(row =>
+    (!g || row['Grupo'] === g) &&
+    (!s || row['Superintendência'] === s) &&
+    (!r || row['Regional'] === r) &&
+    (!f || row['Fornecimento'] === f)
+  );
+  document.getElementById('filterCount').textContent = `${filteredData.length} de ${allData.length} registros`;
+  updatePaineis();
+  updateCharts();
+  renderTable();
+}
+
+function resetFilters() {
+  ['fGrupo','fSup','fReg','fForn'].forEach(id => document.getElementById(id).value = '');
+  applyFilters();
+}
+
+// ─── PAINÉIS ──────────────────────────────────────────────────────────────────
+function countBy(data, key, val) { return data.filter(r => r['Status'] === val).length; }
+
+function updatePaineis() {
+  const dataA = filteredData.filter(r => r['Grupo'] === 'A');
+  const dataB = filteredData.filter(r => r['Grupo'] === 'B');
+  renderKPI('kpiA', dataA);
+  renderKPI('kpiB', dataB);
+  document.getElementById('badgeA').textContent = dataA.length + ' caso' + (dataA.length !== 1 ? 's' : '');
+  document.getElementById('badgeB').textContent = dataB.length + ' caso' + (dataB.length !== 1 ? 's' : '');
+}
+
+function renderKPI(containerId, data) {
+  const total = data.length;
+  const emT = data.filter(r => r['Status'] && r['Status'].toLowerCase().includes('em tratativa')).length;
+  const exec = data.filter(r => r['Status'] && r['Status'].toLowerCase() === 'executado').length;
+  const pago = data.filter(r => r['Status'] && r['Status'].toLowerCase() === 'pago').length;
+  const pend = data.filter(r => r['Status'] && r['Status'].toLowerCase().includes('pendente')).length;
+  const enc = data.filter(r => r['Status'] && r['Status'].toLowerCase() === 'encerrado').length;
+
+  const kpis = [
+    { cor: '#8b5cf6', lbl: 'Total de Casos',  desc: 'Volume total de improdutivas acompanhadas', val: total },
+    { cor: '#f59e0b', lbl: 'Em Tratativa',    desc: 'Casos com ação em andamento',               val: emT  },
+    { cor: '#3b82f6', lbl: 'Executado',        desc: 'Cortes executados',                         val: exec },
+    { cor: '#ef4444', lbl: 'Pendente > 3 dias',desc: 'Casos críticos para atuação',              val: pend },
+    { cor: '#94a3b8', lbl: 'Encerrado',        desc: 'Caso encerrado',                            val: enc  },
+    { cor: '#22c55e', lbl: 'Pago',             desc: 'Cliente pagou o débito',                   val: pago },
+  ];
+
+  document.getElementById(containerId).innerHTML = `
+    <table class="kpi-table">
+      <thead><tr>
+        <th>Indicador</th>
+        <th>Descrição</th>
+        <th>Qtd</th>
+      </tr></thead>
+      <tbody>
+        ${kpis.map((k, i) => `
+        <tr ${i === 0 ? 'style="font-weight:700;background:#f8fafc"' : ''}>
+          <td><span class="kpi-row-label"><span class="kpi-dot" style="background:${k.cor}"></span>${k.lbl}</span></td>
+          <td class="kpi-desc-cell">${k.desc}</td>
+          <td><span class="kpi-num" style="color:${k.cor}">${k.val}</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ─── CHARTS ───────────────────────────────────────────────────────────────────
+const STATUS_COLORS = {
+  'Executado': '#3b82f6',
+  'Em Tratativa': '#f59e0b',
+  'em Tratativa': '#f59e0b',
+  'Pago': '#22c55e',
+  'Pendente': '#ef4444',
+  'Encerrado': '#94a3b8',
+};
+
+function updateCharts() {
+  buildPizza();
+  buildBarras();
+}
+
+function buildPizza() {
+  const counts = {};
+  filteredData.forEach(r => {
+    const s = r['Status'] || 'Sem Status';
+    const norm = s.trim();
+    const key = norm === 'em Tratativa' ? 'Em Tratativa' : norm;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  const labels = Object.keys(counts);
+  const values = labels.map(l => counts[l]);
+  const colors = labels.map(l => STATUS_COLORS[l] || '#8b5cf6');
+
+  const ctx = document.getElementById('chartPizza').getContext('2d');
+  if (chartPizza) chartPizza.destroy();
+  chartPizza = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: colors, borderWidth: 3, borderColor: '#fff', hoverOffset: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16, boxWidth: 14 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw/filteredData.length*100)}%)`
+          }
+        }
+      },
+      animation: { onComplete: function() { drawDoughnutLabels(this); } }
+    }
+  });
+}
+
+function drawDoughnutLabels(chart) {
+  const { ctx, data, chartArea } = chart;
+  if (!chartArea) return;
+  ctx.save();
+  const meta = chart.getDatasetMeta(0);
+  const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+  meta.data.forEach((arc, i) => {
+    const val = data.datasets[0].data[i];
+    const pct = Math.round(val / total * 100);
+    if (val === 0) return;
+    const angle = (arc.startAngle + arc.endAngle) / 2;
+    const r = (arc.innerRadius + arc.outerRadius) / 2;
+    const x = arc.x + Math.cos(angle) * r;
+    const y = arc.y + Math.sin(angle) * r;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (pct >= 6) {
+      ctx.fillText(`${val}`, x, y - 7);
+      ctx.font = '10px Segoe UI, sans-serif';
+      ctx.fillText(`${pct}%`, x, y + 6);
+    }
+  });
+  ctx.restore();
+}
+
+function buildBarras() {
+  const counts = {};
+  filteredData.forEach(r => {
+    const f = (r['Fechamento'] || 'Sem Fechamento').trim();
+    counts[f] = (counts[f] || 0) + 1;
+  });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  const labels = sorted.map(([k]) => k.length > 30 ? k.slice(0,28)+'…' : k);
+  const values = sorted.map(([,v]) => v);
+  const fullLabels = sorted.map(([k]) => k);
+
+  const ctx = document.getElementById('chartBarras').getContext('2d');
+  if (chartBarras) chartBarras.destroy();
+  const maxVal = values[0] || 1;
+  chartBarras = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Qtd',
+        data: values,
+        backgroundColor: values.map((_,i) => `hsl(${210 + i*28}, 70%, ${50 + i*4}%)`),
+        borderRadius: 6, borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      clip: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { title: (items) => fullLabels[items[0].dataIndex] }
+        }
+      },
+      scales: {
+        x: { display: false, grid: { display: false }, max: maxVal * 1.45 },
+        y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+      },
+      animation: { onComplete: function() { drawBarLabels(this, values, filteredData.length); } }
+    }
+  });
+}
+
+function drawBarLabels(chart, values, total) {
+  const { ctx, chartArea } = chart;
+  if (!chartArea) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, chart.width, chart.height);
+  ctx.clip();
+  const meta = chart.getDatasetMeta(0);
+  meta.data.forEach((bar, i) => {
+    const val = values[i];
+    const pct = total > 0 ? Math.round(val / total * 100) : 0;
+    const x = bar.x + 8;
+    const y = bar.y;
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 12px Segoe UI, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${val}  (${pct}%)`, x, y);
+  });
+  ctx.restore();
+}
+
+// ─── TABLE ────────────────────────────────────────────────────────────────────
+function renderTable() {
+  const q = (document.getElementById('tableSearch').value || '').toLowerCase();
+  const rows = filteredData.filter(r =>
+    !q || Object.values(r).some(v => String(v).toLowerCase().includes(q))
+  );
+
+  const tbody = document.getElementById('tableBody');
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="18" class="no-results">Nenhum registro encontrado</td></tr>`;
+    document.getElementById('tableFooter').textContent = '0 registros';
+    return;
+  }
+
+  const statusClass = s => ({'Executado':'tag-exec','Em Tratativa':'tag-em','em Tratativa':'tag-em','Pago':'tag-pago','Pendente':'tag-pend'}[s] || 'tag-pend');
+  const d = v => (v && String(v).trim() && v !== '—') ? v : '—';
+  const mono = 'font-family:monospace;font-size:11px';
+
+  tbody.innerHTML = rows.map(r => {
+    const grpClass = r['Grupo'] === 'A' ? 'badge-a' : 'badge-b';
+    const valor = r['Valor do débito'] && !isNaN(Number(r['Valor do débito']))
+      ? Number(r['Valor do débito']).toLocaleString('pt-BR', {style:'currency',currency:'BRL'})
+      : (r['Valor do débito'] || '—');
+    const resumo = (r['Resumo'] || '').length > 55 ? r['Resumo'].slice(0,53)+'…' : (r['Resumo'] || '—');
+    return `<tr>
+      <td class="col-fix col-fix-0"><span class="grupo-badge ${grpClass}">${r['Grupo']}</span></td>
+      <td class="col-fix col-fix-1">${d(r['Superintendência'])}</td>
+      <td class="col-fix col-fix-2">${d(r['Regional'])}</td>
+      <td style="${mono}">${d(r['SS'])}</td>
+      <td style="${mono}">${d(r['UC'])}</td>
+      <td style="font-size:11px">${d(r['1º Geração'])}</td>
+      <td style="font-size:11px">${d(r['1º Execução'])}</td>
+      <td style="${mono}">${d(r['SS da última Geração'])}</td>
+      <td style="font-size:11px">${d(r['Última Geração'])}</td>
+      <td style="font-size:11px">${d(r['Última atuação'])}</td>
+      <td style="font-weight:600">${d(r['Nome do Cliente'])}</td>
+      <td style="white-space:nowrap">${valor}</td>
+      <td>${d(r['Fornecimento'])}</td>
+      <td style="font-size:11px">${d(r['Fechamento'])}</td>
+      <td><span class="tag ${statusClass(r['Status'])}">${d(r['Status'])}</span></td>
+      <td style="font-size:11px;color:var(--muted)" title="${r['Resumo']||''}">${resumo}</td>
+      <td style="font-size:11px">${d(r['Última tratativa'])}</td>
+      <td style="font-size:11px">${d(r['Próxima ação'])}</td>
+    </tr>`;
+  }).join('');
+
+  const total = rows.reduce((s,r) => s + (Number(r['Valor do débito'])||0), 0);
+  document.getElementById('tableFooter').textContent =
+    `${rows.length} registro(s) · Total débito: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`;
+}
+
+// ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+function exportExcel() {
+  const q = (document.getElementById('tableSearch').value || '').toLowerCase();
+  const rows = filteredData.filter(r =>
+    !q || Object.values(r).some(v => String(v).toLowerCase().includes(q))
+  );
+  const cols = ['Grupo','Superintendência','Regional','SS','UC',
+                '1º Geração','1º Execução',
+                'SS da última Geração','Última Geração','Última atuação',
+                'Nome do Cliente','Valor do débito','Fornecimento','Fechamento',
+                'Status','Resumo','Última tratativa','Próxima ação','Prazo'];
+  const ws_data = [cols, ...rows.map(r => cols.map(c => r[c] ?? ''))];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!cols'] = cols.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Improdutivas');
+  XLSX.writeFile(wb, 'Esteira_Improdutivas_Filtrado.xlsx');
+}
+
+// ─── FILE UPLOAD ──────────────────────────────────────────────────────────────
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const COLS = ['Grupo','Superintendência','SS','UC','1º Geração','1º Execução',
+                    'SS da última Geração','Última Geração','Última atuação',
+                    'Fornecimento','Nome do Cliente','Valor do débito',
+                    'Fechamento','Regional','Resumo','Status',
+                    'Última tratativa','Próxima ação','Prazo'];
+
+      function fmtDate(v) {
+        if (!v) return '';
+        if (v instanceof Date) return v.toLocaleDateString('pt-BR');
+        return String(v);
+      }
+
+      function parseSheet(sheetName, headerRow) {
+        if (!wb.SheetNames.includes(sheetName)) return [];
+        const ws = wb.Sheets[sheetName];
+        const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        const dataRows = raw.slice(headerRow + 1);
+        return dataRows
+          .filter(r => r[2] && String(r[2]).trim() !== '')
+          .map(r => {
+            const obj = {};
+            COLS.forEach((col, i) => {
+              const v = r[i];
+              // datas estão nas cols 4,5,7,8 (1º Geração, 1º Execução, Última Geração, Última atuação)
+              if ([4,5,7,8].includes(i)) obj[col] = fmtDate(v);
+              else obj[col] = v === null || v === undefined ? '' : String(v).trim();
+            });
+            // Normalizar status
+            if (obj['Status'] && obj['Status'].toLowerCase() === 'em tratativa') obj['Status'] = 'Em Tratativa';
+            // Normalizar fornecimento
+            if (obj['Fornecimento']) {
+              const fv = obj['Fornecimento'].toLowerCase();
+              if (fv.startsWith('suspens')) obj['Fornecimento'] = 'Suspenso';
+              else if (fv === 'normal') obj['Fornecimento'] = 'Normal';
+            }
+            return obj;
+          });
+      }
+
+      // Grupo A: header na linha 0; Grupo B: header na linha 1
+      const newA = parseSheet('Base_Grupo_A', 0).map(r => ({...r, Grupo:'A'}));
+      const newB = parseSheet('Base_Grupo_B', 1).map(r => ({...r, Grupo:'B'}));
+
+      if (!newA.length && !newB.length) {
+        alert('Planilha não reconhecida. Verifique as abas Base_Grupo_A e Base_Grupo_B.');
+        return;
+      }
+      allData = [...newA, ...newB];
+      populateFilters();
+      applyFilters();
+      alert(`Base atualizada: ${newA.length} registros Grupo A + ${newB.length} Grupo B`);
+    } catch(err) {
+      alert('Erro ao ler o arquivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─── SAVE HTML ────────────────────────────────────────────────────────────────
+function saveHTML() {
+  // Separar grupoA e grupoB a partir do allData atual (após qualquer atualização de base)
+  const grupoA = allData.filter(r => r['Grupo'] === 'A');
+  const grupoB = allData.filter(r => r['Grupo'] === 'B');
+  const newJson = JSON.stringify({ grupoA, grupoB });
+
+  // Obter o HTML atual e substituir o EMBEDDED_DATA pelo JSON atualizado
+  let html = document.documentElement.outerHTML;
+  html = html.replace(
+    /const EMBEDDED_DATA = \{[\s\S]*?\};/,
+    'const EMBEDDED_DATA = ' + newJson + ';'
+  );
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Dashboard_Improdutivas.html';
+  a.click();
+}
+</script>
+
+
+</body></html>
